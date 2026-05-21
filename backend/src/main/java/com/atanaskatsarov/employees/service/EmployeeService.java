@@ -21,6 +21,7 @@ import com.atanaskatsarov.employees.model.EmployeePairKey;
 import com.atanaskatsarov.employees.model.EmployeePairResult;
 import com.atanaskatsarov.employees.model.EmployeeRecord;
 import com.atanaskatsarov.employees.model.ProjectOverlap;
+import com.atanaskatsarov.employees.util.DateFormatUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -91,10 +92,7 @@ public class EmployeeService {
     LocalDate overlapStart = emp1.dateFrom().isAfter(emp2.dateFrom()) ? emp1.dateFrom() : emp2.dateFrom();
     LocalDate overlapEnd = emp1.dateTo().isBefore(emp2.dateTo()) ? emp1.dateTo() : emp2.dateTo();
     if (overlapStart.isBefore(overlapEnd) || overlapStart.isEqual(overlapEnd)) {
-      return (int) ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1; // TODO: Check if we should include both start
-                                                                          // and end date as worked days, for now we
-                                                                          // assume that if they overlap at least one
-                                                                          // day, it counts as 1 day worked together.
+      return (int) ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
     }
     return 0;
   }
@@ -117,9 +115,8 @@ public class EmployeeService {
           EmployeeRecord employee = new EmployeeRecord(
               Long.valueOf(csvRecord.get(0)),
               Long.valueOf(csvRecord.get(1)),
-              LocalDate.parse(csvRecord.get(2)), // TODO: All date formats should be supported, but for now we can
-                                                 // assume ISO format
-              LocalDate.parse(csvRecord.get(3)) // TODO: null should be now date
+              DateFormatUtil.parseDate(csvRecord.get(2)),
+              csvRecord.get(3) == null ? LocalDate.now() : DateFormatUtil.parseDate(csvRecord.get(3))
           );
           employees.add(employee);
         } catch (Exception e) {
