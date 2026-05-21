@@ -41,11 +41,10 @@ public class EmployeeService {
 
     // For each project find employee pairs
     final Map<EmployeePairKey, EmployeePairResult> pairToProjectOverlapsMap = new HashMap<>();
-    projectToEmployeesMap.entrySet().forEach(entry -> {
+    for (Map.Entry<Long, List<EmployeeRecord>> entry : projectToEmployeesMap.entrySet()) {
       Long projectId = entry.getKey();
       List<EmployeeRecord> employees = entry.getValue();
 
-      Map<EmployeePairKey, ProjectOverlap> pairToOverlapMap = new HashMap<>();
       for (int i = 0; i < employees.size(); i++) {
         for (int j = i + 1; j < employees.size(); j++) {
           EmployeeRecord emp1 = employees.get(i);
@@ -56,32 +55,27 @@ public class EmployeeService {
 
           int daysWorked = calculateOverlapDays(emp1, emp2);
           if (daysWorked > 0) {
-            if (pairToOverlapMap.containsKey(employeePairKey)) {
-              ProjectOverlap existingOverlap = pairToOverlapMap.get(employeePairKey);
-              pairToOverlapMap.put(employeePairKey,
-                  new ProjectOverlap(projectId, existingOverlap.daysWorked() + daysWorked));
+            if (pairToProjectOverlapsMap.containsKey(employeePairKey)) {
+              EmployeePairResult existingResult = pairToProjectOverlapsMap.get(employeePairKey);
+              List<ProjectOverlap> updatedOverlaps = new ArrayList<>(existingResult.projectOverlaps());
+              updatedOverlaps.stream().filter(overlap -> projectId.equals(overlap.projectId())).findFirst()
+                  .ifPresentOrElse(overlap -> {
+                    updatedOverlaps.remove(overlap);
+                    updatedOverlaps.add(new ProjectOverlap(projectId, overlap.daysWorked() + daysWorked));
+                  }, () -> updatedOverlaps.add(new ProjectOverlap(projectId, daysWorked)));
+
+              pairToProjectOverlapsMap.put(employeePairKey,
+                  new EmployeePairResult(employeePairKey.employee1Id(), employeePairKey.employee2Id(),
+                      existingResult.totalDaysWorked() + daysWorked, updatedOverlaps));
             } else {
-              pairToOverlapMap.put(employeePairKey, new ProjectOverlap(projectId, daysWorked));
+              pairToProjectOverlapsMap.put(employeePairKey,
+                  new EmployeePairResult(employeePairKey.employee1Id(), employeePairKey.employee2Id(),
+                      daysWorked, List.of(new ProjectOverlap(projectId, daysWorked))));
             }
           }
         }
       }
-
-      pairToOverlapMap.entrySet().forEach(pairEntry -> {
-        EmployeePairKey pairKey = pairEntry.getKey();
-        ProjectOverlap overlap = pairEntry.getValue();
-        if (pairToProjectOverlapsMap.containsKey(pairKey)) {
-          EmployeePairResult existingResult = pairToProjectOverlapsMap.get(pairKey);
-          List<ProjectOverlap> updatedOverlaps = new ArrayList<>(existingResult.projectOverlaps());
-          updatedOverlaps.add(overlap);
-          pairToProjectOverlapsMap.put(pairKey, new EmployeePairResult(pairKey.employee1Id(), pairKey.employee2Id(),
-              existingResult.totalDaysWorked() + overlap.daysWorked(), updatedOverlaps));
-        } else {
-          pairToProjectOverlapsMap.put(pairKey, new EmployeePairResult(pairKey.employee1Id(), pairKey.employee2Id(),
-              overlap.daysWorked(), List.of(overlap)));
-        }
-      });
-    });
+    }
 
     return pairToProjectOverlapsMap.values().stream()
         .max((p1, p2) -> Integer.compare(p1.totalDaysWorked(), p2.totalDaysWorked()))
@@ -116,8 +110,7 @@ public class EmployeeService {
               Long.valueOf(csvRecord.get(0)),
               Long.valueOf(csvRecord.get(1)),
               DateFormatUtil.parseDate(csvRecord.get(2)),
-              csvRecord.get(3) == null ? LocalDate.now() : DateFormatUtil.parseDate(csvRecord.get(3))
-          );
+              csvRecord.get(3) == null ? LocalDate.now() : DateFormatUtil.parseDate(csvRecord.get(3)));
           employees.add(employee);
         } catch (Exception e) {
           log.warn("Skipping invalid CSV record at line {}: {}", csvRecord.getRecordNumber(), e.getMessage());
