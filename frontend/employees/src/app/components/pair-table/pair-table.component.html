@@ -1,0 +1,38 @@
+<div class="pair-table">
+  <ng-container *ngIf="!resultMessage(); else messageTemplate">
+    <ng-container *ngIf="results() as pairResult">
+      <div *ngIf="pairResult.totalDaysWorked > 0; else noOverlaps">
+        <h2>Longest working pair: {{ pairResult.employee1Id }} and {{ pairResult.employee2Id }}</h2>
+        <p>Total days worked together: {{ pairResult.totalDaysWorked }}</p>
+
+        <table class="pair-table__grid">
+        <thead>
+          <tr>
+            <th>Employee ID #1</th>
+            <th>Employee ID #2</th>
+            <th>Project ID</th>
+            <th>Days worked</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let overlap of pairResult.projectOverlaps">
+            <td>{{ pairResult.employee1Id }}</td>
+            <td>{{ pairResult.employee2Id }}</td>
+            <td>{{ overlap.projectId }}</td>
+            <td>{{ overlap.daysWorked }}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <ng-template #noOverlaps>
+        <h2>No project overlaps found</h2>
+      </ng-template>
+
+    </ng-container>
+  </ng-container>
+
+  <ng-template #messageTemplate>
+    <div class="pair-table__message">{{resultMessage()}}</div>
+  </ng-template>
+</div>

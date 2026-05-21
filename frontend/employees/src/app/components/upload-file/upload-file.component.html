@@ -1,0 +1,12 @@
+<div class="upload-file">
+  <label class="upload-file__dropzone">
+    <span class="upload-file__title">Upload a CSV file</span>
+    <span class="upload-file__subtitle">Click to choose a file or drag it here.</span>
+    <input
+      type="file"
+      class="upload-file__input"
+      accept=".csv"
+      (change)="onFileSelected($event)"
+    />
+  </label>
+</div>

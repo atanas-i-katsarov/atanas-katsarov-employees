@@ -1,0 +1,35 @@
+.pair-table {
+  margin-top: 1.5rem;
+}
+
+.pair-table__grid {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.pair-table__grid th,
+.pair-table__grid td {
+  padding: 0.9rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pair-table__grid th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #111827;
+}
+
+.pair-table__grid tr:last-child td {
+  border-bottom: none;
+}
+
+.pair-table__message {
+  padding: 1rem;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
