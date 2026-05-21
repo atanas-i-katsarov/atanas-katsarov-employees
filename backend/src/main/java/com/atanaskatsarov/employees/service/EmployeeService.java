@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.atanaskatsarov.employees.exception.InvalidCsvException;
+import com.atanaskatsarov.employees.model.EmployeePairAggregate;
 import com.atanaskatsarov.employees.model.EmployeePairKey;
 import com.atanaskatsarov.employees.model.EmployeePairResult;
 import com.atanaskatsarov.employees.model.EmployeeRecord;
@@ -40,7 +42,7 @@ public class EmployeeService {
         .collect(Collectors.groupingBy(EmployeeRecord::projectId));
 
     // For each project find employee pairs
-    final Map<EmployeePairKey, EmployeePairResult> pairToProjectOverlapsMap = new HashMap<>();
+    final Map<EmployeePairKey, EmployeePairAggregate> pairToProjectOverlapsMap = new HashMap<>();
     for (Map.Entry<Long, List<EmployeeRecord>> entry : projectToEmployeesMap.entrySet()) {
       Long projectId = entry.getKey();
       List<EmployeeRecord> employees = entry.getValue();
@@ -50,35 +52,24 @@ public class EmployeeService {
           EmployeeRecord emp1 = employees.get(i);
           EmployeeRecord emp2 = employees.get(j);
 
-          EmployeePairKey employeePairKey = new EmployeePairKey(Math.min(emp1.id(), emp2.id()),
-              Math.max(emp1.id(), emp2.id()));
-
           int daysWorked = calculateOverlapDays(emp1, emp2);
           if (daysWorked > 0) {
-            if (pairToProjectOverlapsMap.containsKey(employeePairKey)) {
-              EmployeePairResult existingResult = pairToProjectOverlapsMap.get(employeePairKey);
-              List<ProjectOverlap> updatedOverlaps = new ArrayList<>(existingResult.projectOverlaps());
-              updatedOverlaps.stream().filter(overlap -> projectId.equals(overlap.projectId())).findFirst()
-                  .ifPresentOrElse(overlap -> {
-                    updatedOverlaps.remove(overlap);
-                    updatedOverlaps.add(new ProjectOverlap(projectId, overlap.daysWorked() + daysWorked));
-                  }, () -> updatedOverlaps.add(new ProjectOverlap(projectId, daysWorked)));
+            EmployeePairKey employeePairKey = new EmployeePairKey(emp1.id(), emp2.id());
 
-              pairToProjectOverlapsMap.put(employeePairKey,
-                  new EmployeePairResult(employeePairKey.employee1Id(), employeePairKey.employee2Id(),
-                      existingResult.totalDaysWorked() + daysWorked, updatedOverlaps));
-            } else {
-              pairToProjectOverlapsMap.put(employeePairKey,
-                  new EmployeePairResult(employeePairKey.employee1Id(), employeePairKey.employee2Id(),
-                      daysWorked, List.of(new ProjectOverlap(projectId, daysWorked))));
-            }
+            EmployeePairAggregate aggregate = pairToProjectOverlapsMap.computeIfAbsent(
+                employeePairKey,
+                key -> new EmployeePairAggregate(key.employee1Id(), key.employee2Id()));
+
+            aggregate.addProjectOverlap(new ProjectOverlap(projectId, daysWorked));
           }
         }
       }
     }
 
     return pairToProjectOverlapsMap.values().stream()
-        .max((p1, p2) -> Integer.compare(p1.totalDaysWorked(), p2.totalDaysWorked()))
+        .max(
+            Comparator.comparingInt(EmployeePairAggregate::totalDaysWorked))
+        .map(EmployeePairAggregate::toResult)
         .orElse(new EmployeePairResult(null, null, 0, List.of()));
   }
 
